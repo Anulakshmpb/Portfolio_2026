@@ -85,3 +85,22 @@
   opacity: 0.04;
   pointer-events: none;
 }
+
+/* Vintage Paper Styles */
+.vintage-paper-container {
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.12);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  background-size: 6px 6px;
+}
+
+.coffee-stain {
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.old-paper-dots {
+  background-image: radial-gradient(rgba(80, 60, 20, 0.05) 1px, transparent 0);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
