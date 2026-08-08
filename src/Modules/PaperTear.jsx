@@ -21,10 +21,10 @@ import { gsap } from "gsap";
    60 points for ultra-smooth edges. Max ±3.8% drift from centre.
    ═══════════════════════════════════════════════════════════════════════════ */
 function buildTearPoints() {
-  const N       = 60;    // points → organic micro-texture
-  const DRIFT   = 3.8;   // max % from 50%
-  const STEP    = 1.6;   // max x-shift per step
-  const REVERT  = 0.18;  // pull-back to centre strength
+  const N = 60;    // points → organic micro-texture
+  const DRIFT = 3.8;   // max % from 50%
+  const STEP = 1.6;   // max x-shift per step
+  const REVERT = 0.18;  // pull-back to centre strength
 
   let x = 50;
   return Array.from({ length: N }, (_, i) => {
@@ -65,8 +65,8 @@ function getLeftClip(pts, p) {
     return `polygon(0% 0%,${all},0% 100%)`;
   }
   const front = getTearFront(pts, p);
-  const torn  = pts.filter(pt => pt.y <= front.y);
-  const ts    = torn.map(pt => `${D(pt.x)}% ${D(pt.y)}%`).join(",");
+  const torn = pts.filter(pt => pt.y <= front.y);
+  const ts = torn.map(pt => `${D(pt.x)}% ${D(pt.y)}%`).join(",");
   // After tear front: back to straight 50% seam, then down to bottom-left
   return `polygon(0% 0%,${ts},${D(front.x)}% ${D(front.y)}%,50% ${D(front.y)}%,50% 100%,0% 100%)`;
 }
@@ -78,8 +78,8 @@ function getRightClip(pts, p) {
     return `polygon(100% 0%,${all},100% 100%)`;
   }
   const front = getTearFront(pts, p);
-  const torn  = pts.filter(pt => pt.y <= front.y);
-  const ts    = torn.map(pt => `${D(pt.x)}% ${D(pt.y)}%`).join(",");
+  const torn = pts.filter(pt => pt.y <= front.y);
+  const ts = torn.map(pt => `${D(pt.x)}% ${D(pt.y)}%`).join(",");
   return `polygon(100% 0%,${ts},${D(front.x)}% ${D(front.y)}%,50% ${D(front.y)}%,50% 100%,100% 100%)`;
 }
 
@@ -192,23 +192,23 @@ function DefaultWallTexture() {
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function PaperTearTransition({
   children,
-  trigger       = false,
+  trigger = false,
   autoPlayDelay = null,
   onComplete,
-  revealBg      = null,
+  revealBg = null,
 }) {
   // Unique SVG clipPath id per instance (avoids collision if mounted twice)
-  const uid        = useId().replace(/:/g, "");
-  const clipId     = `ptt-clip-${uid}`;
+  const uid = useId().replace(/:/g, "");
+  const clipId = `ptt-clip-${uid}`;
 
-  const wrapRef      = useRef(null);
-  const leftRef      = useRef(null);
-  const rightRef     = useRef(null);
-  const maskRectRef  = useRef(null);   // SVG <rect> controlling tear reveal area
+  const wrapRef = useRef(null);
+  const leftRef = useRef(null);
+  const rightRef = useRef(null);
+  const maskRectRef = useRef(null);   // SVG <rect> controlling tear reveal area
   const fiberPathRef = useRef(null);   // white fiber <path>
-  const overlayRef   = useRef(null);   // the whole SVG overlay wrapper
-  const played       = useRef(false);
-  const runTearRef   = useRef(null);
+  const overlayRef = useRef(null);   // the whole SVG overlay wrapper
+  const played = useRef(false);
+  const runTearRef = useRef(null);
 
   // Stable tear geometry (built once, never regenerated)
   const tearPoints = useMemo(buildTearPoints, []);
@@ -220,11 +220,11 @@ export default function PaperTearTransition({
       if (played.current) return;
       played.current = true;
 
-      const left      = leftRef.current;
-      const right     = rightRef.current;
-      const maskRect  = maskRectRef.current;
-      const overlay   = overlayRef.current;
-      const revealEl  = wrapRef.current.querySelector(".ptt-reveal-bg");
+      const left = leftRef.current;
+      const right = rightRef.current;
+      const maskRect = maskRectRef.current;
+      const overlay = overlayRef.current;
+      const revealEl = wrapRef.current.querySelector(".ptt-reveal-bg");
 
       // GPU-composited layers
       gsap.set([left, right], {
@@ -274,7 +274,7 @@ export default function PaperTearTransition({
           // ── Clip-paths: crack grows from top down ──────────────────
           const lc = getLeftClip(tearPoints, p);
           const rc = getRightClip(tearPoints, p);
-          left.style.clipPath  = lc;
+          left.style.clipPath = lc;
           right.style.clipPath = rc;
 
           // ── SVG mask rect: fiber/shadow only shows where torn ───────
@@ -323,19 +323,28 @@ export default function PaperTearTransition({
          They remain partially visible at the sides (not fully off screen).
          Motion decelerates naturally to rest. No bounce. No spring.
          ───────────────────────────────────────────────────────────────── */
+      // Phase 2: Halves fly completely off screen to opposite sides
       tl.to(left, {
-        x: "-44%",          // torn edge slides to ~6% from left edge of viewport
-        rotateY: -8,        // paper thickness curl increases slightly
-        duration: 1.3,
-        ease: "power2.out", // decelerates smoothly to natural stop
+        x: "-130%",
+        rotateY: -20,
+        rotateZ: -8,
+        opacity: 0,
+        duration: 1.0,
+        ease: "power3.in",
       }, ">");
 
       tl.to(right, {
-        x: "44%",
-        rotateY: 8,
-        duration: 1.3,
-        ease: "power2.out",
+        x: "130%",
+        rotateY: 20,
+        rotateZ: 8,
+        opacity: 0,
+        duration: 1.0,
+        ease: "power3.in",
       }, "<");              // both move simultaneously
+
+      // CRITICAL: forcefully hide both halves after fly-off — prevents
+      // GPU-composited layers from bleeding at viewport edges
+      tl.set([left, right], { display: "none" }, ">");
 
       /* ─────────────────────────────────────────────────────────────────
          REVEAL — Background fades in through the widening gap.
@@ -373,13 +382,14 @@ export default function PaperTearTransition({
   return (
     <div
       ref={wrapRef}
-      className="relative w-full min-h-screen overflow-hidden"
-      style={{ background: "#d9d3c4" }}
+      className="relative w-full min-h-screen"
+      style={{ background: "transparent" }}
     >
       {/* ── Reveal layer — behind everything ── */}
-      <div className="ptt-reveal-bg absolute inset-0 opacity-0">
+      <div className="ptt-reveal-bg absolute inset-0 min-h-screen opacity-0">
         {revealBg || <DefaultWallTexture />}
       </div>
+
 
       {/*
         LEFT half — starts as a perfect left rectangle.

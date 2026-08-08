@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import DrawingPortrait from "./DrawingPortriate";
 import PaperTearTransition from "./PaperTear";
+import HomePage from './homePage';
 
 function Newspaper() {
   const pageRef = useRef(null);
@@ -139,18 +140,12 @@ function Newspaper() {
 
 function AfterTear() {
   return (
-    <div className="relative z-20 flex min-h-screen items-center justify-center">
-      <div className="text-center font-sans">
-        <p className="text-xs uppercase tracking-[0.3em] text-black/50 mb-3">
-          Chapter Two
-        </p>
-        <h2 className="text-4xl md:text-6xl font-serif font-bold text-black/80">
-          Let's build something.
-        </h2>
-      </div>
+    <div className="absolute inset-0 w-full h-full">
+      <HomePage />
     </div>
   );
 }
+
 
 export default function Homepage() {
   const [tear, setTear] = useState(false);
