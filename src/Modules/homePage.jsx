@@ -6,7 +6,7 @@ import Portrait from "../Logo/portrait_clean.png";
    Design tokens — pure dark starfield palette
 ───────────────────────────────────────────────────────────────────────────── */
 const C = {
-  bg: "#080808",
+  bg: "#000000",
   white: "#F0EDE8",
   muted: "rgba(240,237,232,0.45)",
   dim: "rgba(240,237,232,0.22)",
@@ -28,9 +28,9 @@ const rand = (min, max) => min + Math.random() * (max - min);
 
 /* Tiered star config: dust micro-particles, mid stars, bright stars */
 const STAR_TIERS = [
-  { count: 280, sizeMin: 0.4, sizeMax: 1.0, opMin: 0.10, opMax: 0.50, twMin: 3, twMax: 9, glow: false },
-  { count: 160, sizeMin: 1.0, sizeMax: 2.2, opMin: 0.30, opMax: 0.80, twMin: 2, twMax: 6, glow: false },
-  { count: 30, sizeMin: 2.2, sizeMax: 3.6, opMin: 0.60, opMax: 1.00, twMin: 1, twMax: 4, glow: true },
+  { count: 420, sizeMin: 0.4, sizeMax: 1.0, opMin: 0.10, opMax: 0.50, twMin: 3, twMax: 9, glow: false },
+  { count: 240, sizeMin: 1.0, sizeMax: 2.2, opMin: 0.30, opMax: 0.80, twMin: 2, twMax: 6, glow: false },
+  { count: 45, sizeMin: 2.2, sizeMax: 3.6, opMin: 0.60, opMax: 1.00, twMin: 1, twMax: 4, glow: true },
 ];
 
 function StarField() {
@@ -254,14 +254,54 @@ function PortraitFrame() {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Roles list — with + and × symbols like the reference
+   Roles list 
 ───────────────────────────────────────────────────────────────────────────── */
 const ROLES = [
-  { sym: "+", label: "Full Stack Developer (MERN)" },
-  { sym: "+", label: "React.js • Node.js • MongoDB • Firebase | Building ERP" },
-  { sym: "×", label: "Building ERP, Dashboards & Payment Systems" },
-  { sym: "×", label: "Open to India & Gulf (UAE, KSA, Qatar, Oman, Kuwait, Bahrain)" },
+  { label: "Full Stack Developer (MERN)" },
+  { label: "React.js • Node.js • MongoDB • Firebase | Building ERP" },
+  { label: "Building ERP, Dashboards & Payment Systems" },
+  { label: "Open to India & Gulf (UAE, KSA, Qatar, Oman, Kuwait, Bahrain)" },
 ];
+
+/* 6-pointed sparkle star — 3 crossing lines at 0°, 60°, 120° */
+function SparkeStar({ size = 14, color = "rgba(240,237,232,0.7)", speed = "3s", delay = "0s" }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: size,
+        height: size,
+        flexShrink: 0,
+        perspective: "80px",
+      }}
+    >
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 14 14"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{
+          animation: `starSpinY ${speed} ${delay} linear infinite`,
+          transformStyle: "preserve-3d",
+          filter: `drop-shadow(0 0 3px ${color})`,
+        }}
+      >
+        {/* Line 1: horizontal */}
+        <line x1="1" y1="7" x2="13" y2="7" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+        {/* Line 2: diagonal \ */}
+        <line x1="3.5" y1="2" x2="10.5" y2="12" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+        {/* Line 3: diagonal / */}
+        <line x1="10.5" y1="2" x2="3.5" y2="12" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
+}
+
+const STAR_SPEEDS = ["3.2s", "2.8s", "3.6s", "4.0s"];
+const STAR_DELAYS = ["0s", "0.8s", "0.4s", "1.2s"];
 
 function RoleList() {
   return (
@@ -274,7 +314,7 @@ function RoleList() {
       }}
       style={{ listStyle: "none", padding: 0, margin: 0 }}
     >
-      {ROLES.map((r) => (
+      {ROLES.map((r, i) => (
         <motion.li
           key={r.label}
           variants={{
@@ -288,18 +328,7 @@ function RoleList() {
             marginBottom: 9,
           }}
         >
-          <span
-            style={{
-              fontFamily: "monospace",
-              fontSize: 13,
-              color: C.muted,
-              width: 14,
-              flexShrink: 0,
-              lineHeight: 1,
-            }}
-          >
-            {r.sym}
-          </span>
+          <SparkeStar speed={STAR_SPEEDS[i]} delay={STAR_DELAYS[i]} />
           <span
             style={{
               fontFamily: "'Outfit', sans-serif",
@@ -335,11 +364,6 @@ function ScrollIcon() {
         gap: 3,
       }}
     >
-      {/* Tiny up arrow */}
-      {/* <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
-        <path d="M6 1L11 7H1L6 1Z" stroke="rgba(240,237,232,0.7)" strokeWidth="1.2" fill="none" strokeLinejoin="round" />
-      </svg> */}
-
     </div>
   );
 }
@@ -348,27 +372,34 @@ function ScrollIcon() {
    Main HomePage export
 ───────────────────────────────────────────────────────────────────────────── */
 export default function HomePage() {
-  /* ── 3D mouse parallax ── */
+  /* ── 3D mouse parallax & translation movement ── */
   const rawX = useMotionValue(0);
   const rawY = useMotionValue(0);
+  const rawDotX = useMotionValue(0);
+  const rawDotY = useMotionValue(0);
+
   const SPRING = { stiffness: 60, damping: 18, mass: 0.9 };
   const rotateX = useSpring(rawY, SPRING);   // mouse Y  → tilt around X-axis
   const rotateY = useSpring(rawX, SPRING);   // mouse X  → tilt around Y-axis
+  const moveX = useSpring(rawDotX, SPRING);   // mouse X  → translation movement
+  const moveY = useSpring(rawDotY, SPRING);   // mouse Y  → translation movement
 
   const handleMouseMove = useCallback((e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const nx = ((e.clientX - rect.left) / rect.width  - 0.5) * 2; // -1 … +1
     const ny = ((e.clientY - rect.top)  / rect.height - 0.5) * 2;
-    // Opposite direction: mouse right → rotateY positive (right side recedes, content leans left)
-    //                     mouse down  → rotateX negative (top comes forward, content leans up)
-    rawX.set( nx * 8);   // max ±8°  (feeds rotateY)
-    rawY.set(-ny * 6);   // max ±6°  (feeds rotateX)
-  }, [rawX, rawY]);
+    rawX.set(nx * 8);       // max ±8° tilt
+    rawY.set(-ny * 6);      // max ±6° tilt
+    rawDotX.set(-nx * 35);  // shift in opposite direction of mouse X
+    rawDotY.set(-ny * 30);  // shift in opposite direction of mouse Y
+  }, [rawX, rawY, rawDotX, rawDotY]);
 
   const handleMouseLeave = useCallback(() => {
     rawX.set(0);
     rawY.set(0);
-  }, [rawX, rawY]);
+    rawDotX.set(0);
+    rawDotY.set(0);
+  }, [rawX, rawY, rawDotX, rawDotY]);
 
   return (
     <>
@@ -387,6 +418,10 @@ export default function HomePage() {
         @keyframes sectionArrow {
           0%, 100% { transform: translateY(0); }
           50%       { transform: translateY(-3px); }
+        }
+        @keyframes starSpinY {
+          0%   { transform: rotateY(0deg); }
+          100% { transform: rotateY(360deg); }
         }
       `}</style>
 
@@ -423,13 +458,15 @@ export default function HomePage() {
           }}
         />
 
-        {/* ── 3D tilt wrapper — only foreground content tilts ── */}
+        {/* ── 3D tilt & translation wrapper ── */}
         <motion.div
           style={{
             position: "absolute",
             inset: 0,
             rotateX,
             rotateY,
+            x: moveX,
+            y: moveY,
             transformStyle: "preserve-3d",
             willChange: "transform",
           }}
@@ -472,7 +509,6 @@ export default function HomePage() {
 
         {/* ── Center dots — dense horizontal constellation ── */}
         {[
-          /* original 10 */
           { top: "38%", left: "38%", size: 4, opacity: 0.35, blur: 3, delay: "0s" },
           { top: "52%", left: "42%", size: 3, opacity: 0.28, blur: 4, delay: "0.6s" },
           { top: "44%", left: "55%", size: 5, opacity: 0.22, blur: 5, delay: "1.1s" },
@@ -483,7 +519,6 @@ export default function HomePage() {
           { top: "42%", left: "46%", size: 3, opacity: 0.32, blur: 3, delay: "0.9s" },
           { top: "65%", left: "43%", size: 4, opacity: 0.16, blur: 6, delay: "1.8s" },
           { top: "33%", left: "60%", size: 3, opacity: 0.24, blur: 4, delay: "2.3s" },
-          /* extra horizontal center dots — spread left→right */
           { top: "46%", left: "8%", size: 3, opacity: 0.20, blur: 4, delay: "0.4s" },
           { top: "50%", left: "14%", size: 4, opacity: 0.28, blur: 3, delay: "1.2s" },
           { top: "43%", left: "21%", size: 3, opacity: 0.22, blur: 5, delay: "0.7s" },
@@ -496,6 +531,26 @@ export default function HomePage() {
           { top: "52%", left: "79%", size: 4, opacity: 0.24, blur: 4, delay: "0.5s" },
           { top: "46%", left: "86%", size: 3, opacity: 0.20, blur: 5, delay: "1.9s" },
           { top: "50%", left: "92%", size: 4, opacity: 0.17, blur: 6, delay: "2.6s" },
+          { top: "48%", left: "33%",   size: 1, opacity: 0.38, blur: 1, delay: "0.1s" },
+          { top: "51%", left: "36%",   size: 2, opacity: 0.30, blur: 2, delay: "0.9s" },
+          { top: "46%", left: "38%",   size: 1, opacity: 0.42, blur: 1, delay: "1.6s" },
+          { top: "53%", left: "40%",   size: 2, opacity: 0.28, blur: 2, delay: "0.3s" },
+          { top: "47%", left: "43%",   size: 1, opacity: 0.35, blur: 1, delay: "2.0s" },
+          { top: "50%", left: "45%",   size: 2, opacity: 0.32, blur: 2, delay: "1.1s" },
+          { top: "45%", left: "47%",   size: 1, opacity: 0.40, blur: 1, delay: "0.5s" },
+          { top: "54%", left: "49%",   size: 2, opacity: 0.26, blur: 2, delay: "1.8s" },
+          { top: "48%", left: "52%",   size: 1, opacity: 0.36, blur: 1, delay: "2.5s" },
+          { top: "46%", left: "54%",   size: 2, opacity: 0.30, blur: 2, delay: "0.7s" },
+          { top: "52%", left: "56%",   size: 1, opacity: 0.38, blur: 1, delay: "1.3s" },
+          { top: "49%", left: "58%",   size: 2, opacity: 0.28, blur: 2, delay: "0.2s" },
+          { top: "44%", left: "61%",   size: 1, opacity: 0.34, blur: 1, delay: "2.2s" },
+          { top: "53%", left: "63%",   size: 2, opacity: 0.26, blur: 2, delay: "1.0s" },
+          { top: "47%", left: "65%",   size: 1, opacity: 0.40, blur: 1, delay: "0.6s" },
+          { top: "50%", left: "67%",   size: 2, opacity: 0.30, blur: 2, delay: "1.7s" },
+          { top: "48%", left: "34.5%", size: 1, opacity: 0.33, blur: 1, delay: "2.8s" },
+          { top: "52%", left: "41.5%", size: 1, opacity: 0.37, blur: 1, delay: "0.4s" },
+          { top: "46%", left: "53.5%", size: 1, opacity: 0.41, blur: 1, delay: "1.5s" },
+          { top: "50%", left: "60.5%", size: 1, opacity: 0.29, blur: 1, delay: "2.1s" },
         ].map((d, i) => (
           <motion.div
             key={`cdot-${i}`}
@@ -603,8 +658,6 @@ export default function HomePage() {
             zIndex: 20,
           }}
         >
-          {/* <ScrollIcon /> */}
-
           <span
             style={{
               fontFamily: "monospace",
@@ -680,7 +733,6 @@ export default function HomePage() {
 
         {/* ── Inline CSS for hero name typography ── */}
         <style>{`
-          /* OUTLINED name — inline */
           .hero-name-outline {
             font-family: 'Outfit', sans-serif;
             font-weight: 900;
@@ -693,7 +745,6 @@ export default function HomePage() {
             text-stroke: 1.6px rgba(240,237,232,0.88);
           }
 
-          /* SOLID FILLED name — inline */
           .hero-name-solid {
             font-family: 'Outfit', sans-serif;
             font-weight: 900;
@@ -705,7 +756,6 @@ export default function HomePage() {
             margin-left:10px;
           }
 
-          /* Responsive layout */
           @media (max-width: 640px) {
             .hero-name-outline,
             .hero-name-solid {
