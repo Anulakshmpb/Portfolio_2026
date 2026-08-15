@@ -1,192 +1,129 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Canvas, useFrame } from '@react-three/fiber';
-import gsap from 'gsap';
-import { TrendingUp, ArrowUpRight } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from "react";
+import { motion, useMotionValue, useSpring } from "framer-motion";
+import { TrendingUp, ArrowUpRight } from "lucide-react";
 
-// --- R3F BACKGROUND: FLOATING CUBES & GRIDS ---
-const FloatingCube = ({ position, size, speed, color }) => {
-  const ref = useRef();
-  useFrame((state) => {
-    const time = state.clock.getElapsedTime();
-    ref.current.position.y = position[1] + Math.sin(time * speed) * 0.25;
-    ref.current.rotation.x = time * 0.08;
-    ref.current.rotation.y = time * 0.12;
-  });
-  return (
-    <mesh ref={ref} position={position}>
-      <boxGeometry args={[size, size, size]} />
-      <meshPhysicalMaterial
-        color={color}
-        transmission={0.9}
-        roughness={0.15}
-        thickness={0.5}
-        transparent
-        opacity={0.25}
-      />
-    </mesh>
-  );
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design tokens — identical to Heropage / Aboutpage / SkillsGalaxy
+───────────────────────────────────────────────────────────────────────────── */
+const C = {
+  bg: "#000000",
+  white: "#F0EDE8",
+  muted: "rgba(240,237,232,0.45)",
+  dim: "rgba(240,237,232,0.22)",
+  faint: "rgba(240,237,232,0.1)",
 };
 
-const AnimatedGrid = () => {
-  const ref = useRef();
-  useFrame((state) => {
-    const time = state.clock.getElapsedTime();
-    ref.current.position.z = (time * 0.15) % 2; // move grid lines backward
-  });
+const EASE = [0.22, 1, 0.36, 1];
+const STAR_SPEEDS = ["3.2s", "2.8s", "3.6s", "4.0s"];
+const STAR_DELAYS = ["0s", "0.8s", "0.4s", "1.2s"];
+
+/* 6-pointed sparkle star — same as Heropage / Aboutpage / SkillsGalaxy */
+function SparkeStar({ size = 13, color = "rgba(240,237,232,0.6)", speed = "3s", delay = "0s" }) {
   return (
-    <gridHelper ref={ref} args={[30, 20, "#4f46e5", "#121034"]} position={[0, -1.8, 0]} />
+    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: size, height: size, flexShrink: 0, perspective: "80px" }}>
+      <svg width={size} height={size} viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"
+        style={{ animation: `starSpinY ${speed} ${delay} linear infinite`, transformStyle: "preserve-3d", filter: `drop-shadow(0 0 3px ${color})` }}>
+        <line x1="1" y1="7" x2="13" y2="7" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+        <line x1="3.5" y1="2" x2="10.5" y2="12" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+        <line x1="10.5" y1="2" x2="3.5" y2="12" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    </span>
   );
-};
+}
 
-const Projects3DBackground = () => {
-  const cubes = useMemo(() => [
-    { position: [-2.5, 1.2, -1], size: 0.5, speed: 0.5, color: "#06b6d4" },
-    { position: [2.8, -0.8, -1.5], size: 0.6, speed: 0.4, color: "#f59e0b" },
-    { position: [-2.2, -1.3, -2], size: 0.4, speed: 0.6, color: "#f97316" },
-    { position: [2.5, 1.5, -1.2], size: 0.45, speed: 0.45, color: "#a855f7" }
-  ], []);
+/* Soft glowing accent orbs — same set used site-wide */
+const GLOW_ORBS = [
+  { top: "30%", left: "44%", size: 7,  blur: 10, delay: 1.4, animDelay: "1.5s", dur: "3s",   op: 0.55 },
+  { top: "22%", left: "18%", size: 9,  blur: 14, delay: 1.7, animDelay: "0.8s", dur: "3.8s", op: 0.40 },
+  { top: "68%", left: "72%", size: 11, blur: 18, delay: 2.0, animDelay: "2.1s", dur: "4.2s", op: 0.35 },
+  { top: "15%", left: "60%", size: 6,  blur: 12, delay: 1.9, animDelay: "1.0s", dur: "3.4s", op: 0.45 },
+  { top: "55%", left: "25%", size: 10, blur: 16, delay: 2.2, animDelay: "3.0s", dur: "4.8s", op: 0.30 },
+  { top: "80%", left: "50%", size: 8,  blur: 14, delay: 2.5, animDelay: "0.5s", dur: "3.6s", op: 0.28 },
+  { top: "40%", left: "82%", size: 12, blur: 20, delay: 2.8, animDelay: "1.8s", dur: "5.0s", op: 0.25 },
+  { top: "10%", left: "35%", size: 7,  blur: 11, delay: 1.6, animDelay: "2.5s", dur: "3.2s", op: 0.38 },
+  { top: "72%", left: "12%", size: 9,  blur: 15, delay: 3.0, animDelay: "0.3s", dur: "4.0s", op: 0.22 },
+  { top: "48%", left: "92%", size: 6,  blur: 10, delay: 2.1, animDelay: "1.3s", dur: "3.5s", op: 0.32 },
+];
 
-  return (
-    <Canvas camera={{ position: [0, 0, 4.2], fov: 50 }} className="w-full h-full">
-      <ambientLight intensity={1.5} />
-      <directionalLight position={[5, 5, 5]} intensity={1.5} />
-      <AnimatedGrid />
-      {cubes.map((cube, idx) => (
-        <FloatingCube key={idx} {...cube} />
-      ))}
-    </Canvas>
-  );
-};
-
-// --- DATA DEFINITION ---
+/* ─────────────────────────────────────────────────────────────────────────────
+   Project data — unchanged content, muted starfield-friendly accent color
+───────────────────────────────────────────────────────────────────────────── */
 const PROJECTS_DATA = [
   {
     id: "myrailpool",
     title: "MyRailPool",
     role: "Shared Commuting Platform",
     duration: "Production Ready",
-    color: "#06b6d4",
-    accentClass: "from-cyan-500/10 via-transparent text-cyan-400 border-cyan-500/30 hover:border-cyan-500/60 shadow-cyan-500/5",
-    glowColor: "rgba(6,182,212,0.3)",
     impact: "A ride-sharing platform designed for railway commuters",
     technologies: ["React", "Redux Toolkit", "Firebase", "Node.js", "Tailwind CSS", "Stripe", "Google Maps API"],
-    caseStudy: {
-      challenge: "Railway commuters struggled to coordinate shared rides, leading to empty seats, high travel costs, and complex booking validation.",
-      solution: "Engineered a production-ready ride-sharing platform utilizing real-time sync, OTP verification, Google Maps route discovery, and Stripe integrations.",
-      architecture: [
-        "React UI with client side Redux state management.",
-        "Firebase authentication hooks verifying user OTP tokens.",
-        "Stripe capturing bookings securely in real-time."
-      ]
-    },
-    dashboardType: "logistics"
+    dashboardType: "logistics",
   },
   {
     id: "atc-erp",
     title: "ATC Business Management Dashboard",
     role: "Enterprise ERP Platform",
     duration: "Production Ready",
-    color: "#f59e0b",
-    accentClass: "from-amber-500/10 via-transparent text-amber-400 border-amber-500/30 hover:border-amber-500/60 shadow-amber-500/5",
-    glowColor: "rgba(245,158,11,0.3)",
     impact: "Dashboard managing finance, logistics, trading, inventory, investments, and property operations",
     technologies: ["React", "Firebase", "Firestore", "Cloud Functions", "Tailwind CSS", "Material UI", "ExcelJS", "Recharts"],
-    caseStudy: {
-      challenge: "Operations managers lacked a unified interface to control logistics, investment metrics, trading, and financial closing files.",
-      solution: "Implemented a full-featured ERP console integrating real-time Firestore synchronization, dynamic Recharts plots, and secure Excel report triggers.",
-      architecture: [
-        "Reactive dashboard widgets rendering key metric indicators.",
-        "Firestore synchronization capturing inventory updates dynamically.",
-        "Cloud Functions automating document processing via ExcelJS."
-      ]
-    },
-    dashboardType: "finance"
+    dashboardType: "finance",
   },
   {
     id: "construction-erp",
     title: "Construction ERP",
     role: "Enterprise Construction Management Platform",
     duration: "Production Ready",
-    color: "#f97316",
-    accentClass: "from-orange-500/10 via-transparent text-orange-400 border-orange-500/30 hover:border-orange-500/60 shadow-orange-500/5",
-    glowColor: "rgba(249,115,22,0.3)",
     impact: "Realtime tracking for projects, material inventories, attendance, and Measurement Books",
     technologies: ["React", "Firebase", "Firestore", "Tailwind CSS", "Material UI", "Recharts"],
-    caseStudy: {
-      challenge: "On-site managers struggled to log daily worker attendance, material consumption, and measurement registers cleanly.",
-      solution: "Designed a lightweight, responsive ERP system linking Firestore listeners and dynamic trackers to sync real-time project logs.",
-      architecture: [
-        "Dynamic form validation pipelines preventing duplicate entry logs.",
-        "Real-time Firestore listeners updating materials sheets within 150ms.",
-        "Responsive Material UI templates optimized for mobile workers."
-      ]
-    },
-    dashboardType: "construction"
+    dashboardType: "construction",
   },
   {
     id: "rivora",
     title: "Rivora",
     role: "Full Stack MERN E-Commerce Platform",
     duration: "Production Ready",
-    color: "#a855f7",
-    accentClass: "from-purple-500/10 via-transparent text-purple-400 border-purple-500/30 hover:border-purple-500/60 shadow-purple-500/5",
-    glowColor: "rgba(168,85,247,0.3)",
     impact: "MERN storefront with Razorpay checkout gateways, OTP validation, and socket logs",
     technologies: ["React", "Node.js", "Express.js", "MongoDB", "JWT", "Socket.io", "Razorpay", "Joi", "Nodemailer"],
-    caseStudy: {
-      challenge: "Online e-commerce portals require high API security thresholds, secure checkouts, and real-time status updates.",
-      solution: "Coded a full-stack MERN storefront with Razorpay checkout gateways, API rate limiting, JWT + OTP controls, and Socket.io logs.",
-      architecture: [
-        "Express.js middleware filtering requests with Joi and Helmet schemas.",
-        "Razorpay SDK handling direct captures and status callbacks.",
-        "Socket.io relays broadcasting order notifications instantly."
-      ]
-    },
-    dashboardType: "luxury"
-  }
+    dashboardType: "luxury",
+  },
 ];
 
-// --- MINI LIVE ANIMATED DASHBOARD PREVIEW ---
-const MiniDashboardPreview = ({ type, color }) => {
+/* ─────────────────────────────────────────────────────────────────────────────
+   Mini live dashboard preview — retained, restyled to bone/cream tones
+   so it sits inside the starfield palette instead of neon accent colors
+───────────────────────────────────────────────────────────────────────────── */
+function MiniDashboardPreview({ type }) {
   const [ticker, setTicker] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTicker((prev) => (prev + 1) % 100);
-    }, 1500);
+    const timer = setInterval(() => setTicker((p) => (p + 1) % 100), 1500);
     return () => clearInterval(timer);
   }, []);
 
+  const base = {
+    background: "#000000",
+    color: C.white,
+    fontFamily: "monospace",
+  };
+  const label = { color: "rgba(240,237,232,0.45)" };
+  const accent = { color: "rgba(240,237,232,0.85)" };
+  const bar = "rgba(240,237,232,0.55)";
+  const border = "rgba(240,237,232,0.12)";
+
   if (type === "logistics") {
     return (
-      <div className="w-full h-full bg-[#050b18] text-white p-3 font-mono text-[9px] flex flex-col justify-between overflow-hidden">
-        {/* Header */}
-        <div className="flex justify-between border-b border-cyan-500/20 pb-1 items-center">
-          <span className="text-cyan-400 font-bold">RAIL_POOL_TELEMETRY</span>
-          <span className="animate-ping w-1.5 h-1.5 rounded-full bg-cyan-400" />
+      <div style={{ ...base, width: "100%", height: "100%", padding: 10, fontSize: 9, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${border}`, paddingBottom: 4, alignItems: "center" }}>
+          <span style={{ ...accent, fontWeight: 700 }}>RAIL_POOL_TELEMETRY</span>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: bar }} />
         </div>
-        {/* Chart Lines */}
-        <div className="flex items-end gap-1.5 h-16 border-b border-cyan-500/15 pb-1 relative justify-center">
-          <div className="absolute top-1 left-1 text-[7px] text-cyan-500/50">SPEED CLUSTER (KM/H)</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 56, borderBottom: `1px solid ${border}`, paddingBottom: 4, justifyContent: "center" }}>
           {[40, 75, 60, 95, 80, 110, 85, 120].map((h, i) => (
-            <motion.div 
-              key={i} 
-              animate={{ height: `${(h + (i === ticker % 8 ? 20 : 0)) * 0.4}px` }}
-              className="w-2.5 bg-cyan-500/70 rounded-t"
-            />
+            <motion.div key={i} animate={{ height: `${(h + (i === ticker % 8 ? 20 : 0)) * 0.35}px` }} style={{ width: 8, background: bar, borderRadius: "2px 2px 0 0" }} />
           ))}
         </div>
-        {/* Logs */}
-        <div className="space-y-1 pt-1 text-slate-400">
-          <div className="flex justify-between">
-            <span>TRAIN_4491:</span>
-            <span className="text-cyan-400 font-semibold">ON_ROUTE_A</span>
-          </div>
-          <div className="flex justify-between">
-            <span>CAPACITY:</span>
-            <span className="text-white">92.4%</span>
-          </div>
+        <div style={{ display: "flex", justifyContent: "space-between", ...label }}>
+          <span>TRAIN_4491:</span>
+          <span style={accent}>ON_ROUTE_A</span>
         </div>
       </div>
     );
@@ -194,238 +131,293 @@ const MiniDashboardPreview = ({ type, color }) => {
 
   if (type === "finance") {
     return (
-      <div className="w-full h-full bg-[#0d0a03] text-white p-3 font-mono text-[9px] flex flex-col justify-between overflow-hidden">
-        {/* Header */}
-        <div className="flex justify-between border-b border-amber-500/20 pb-1 items-center">
-          <span className="text-amber-400 font-bold">LEDGER_CONSOLE</span>
-          <span className="text-[7px] text-amber-500/60 font-mono">NODE_982</span>
+      <div style={{ ...base, width: "100%", height: "100%", padding: 10, fontSize: 9, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
+          <span style={{ ...accent, fontWeight: 700 }}>LEDGER_CONSOLE</span>
+          <span style={label}>NODE_982</span>
         </div>
-        {/* Statistics Ticker */}
-        <div className="py-2 flex items-center justify-between">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
           <div>
-            <span className="text-slate-500 block text-[7px]">OPERATIONS VALUE</span>
-            <span className="text-amber-400 font-black text-xs">${(148920 + ticker * 110).toLocaleString()}</span>
+            <span style={{ ...label, display: "block", fontSize: 7 }}>OPERATIONS VALUE</span>
+            <span style={{ ...accent, fontWeight: 900, fontSize: 12 }}>${(148920 + ticker * 110).toLocaleString()}</span>
           </div>
-          <div className="w-10 h-10 rounded-full border border-amber-500/25 flex items-center justify-center relative">
-            <motion.div 
-              animate={{ rotate: 360 }}
-              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0.5 border-t border-amber-500/80 rounded-full"
-            />
-            <span className="text-[6px] text-slate-300">AUTO</span>
+          <div style={{ width: 34, height: 34, borderRadius: "50%", border: `1px solid ${border}`, position: "relative" }}>
+            <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} style={{ position: "absolute", inset: 1, borderTop: `1px solid ${bar}`, borderRadius: "50%" }} />
           </div>
         </div>
-        {/* Logs Console */}
-        <div className="bg-amber-950/20 border border-amber-500/10 p-1.5 rounded space-y-0.5 font-mono text-[7px] text-slate-400">
-          <div>&gt; AUTH_MATCH_COMPLETED</div>
-          <div className="text-green-400">&gt; COMPILING_REPORT_DONE</div>
-        </div>
+        <div style={{ ...label, fontSize: 7 }}>&gt; COMPILING_REPORT_DONE</div>
       </div>
     );
   }
 
   if (type === "construction") {
     return (
-      <div className="w-full h-full bg-[#0b0603] text-white p-3 font-mono text-[9px] flex flex-col justify-between overflow-hidden">
-        {/* Header */}
-        <div className="flex justify-between border-b border-orange-500/20 pb-1 items-center">
-          <span className="text-orange-400 font-bold">MATERIAL_LOGISTICS</span>
-          <span className="bg-orange-500/20 px-1 py-0.2 rounded text-[7px] text-orange-400 font-bold">CAPACITY</span>
+      <div style={{ ...base, width: "100%", height: "100%", padding: 10, fontSize: 9, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
+          <span style={{ ...accent, fontWeight: 700 }}>MATERIAL_LOGISTICS</span>
         </div>
-        {/* Load Indicators */}
-        <div className="space-y-2 py-2">
-          <div className="space-y-1">
-            <div className="flex justify-between text-[7px] text-slate-400">
-              <span>SITE_ALPHA_CEMENT:</span>
-              <span className="text-orange-400">{78 + (ticker % 10)}%</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "8px 0" }}>
+          {[
+            { label: "SITE_ALPHA_CEMENT", val: 78 + (ticker % 10) },
+            { label: "SITE_BETA_STEEL", val: 42 + (ticker % 5) },
+          ].map((row) => (
+            <div key={row.label}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 7, ...label }}>
+                <span>{row.label}:</span>
+                <span style={accent}>{row.val}%</span>
+              </div>
+              <div style={{ height: 4, width: "100%", background: "rgba(240,237,232,0.06)", borderRadius: 4, overflow: "hidden", marginTop: 2 }}>
+                <motion.div animate={{ width: `${row.val}%` }} style={{ height: "100%", background: bar }} />
+              </div>
             </div>
-            <div className="h-1.5 w-full bg-slate-900 border border-white/5 rounded-full overflow-hidden">
-              <motion.div animate={{ width: `${78 + (ticker % 10)}%` }} className="h-full bg-orange-500" />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="flex justify-between text-[7px] text-slate-400">
-              <span>SITE_BETA_STEEL:</span>
-              <span className="text-orange-400">{42 + (ticker % 5)}%</span>
-            </div>
-            <div className="h-1.5 w-full bg-slate-900 border border-white/5 rounded-full overflow-hidden">
-              <motion.div animate={{ width: `${42 + (ticker % 5)}%` }} className="h-full bg-orange-500" />
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full bg-[#07050e] text-white p-3 font-mono text-[9px] flex flex-col justify-between overflow-hidden">
-      {/* Header */}
-      <div className="flex justify-between border-b border-purple-500/20 pb-1 items-center">
-        <span className="text-purple-400 font-bold">RIVORA_VISUALIZER</span>
-        <span className="text-purple-500/70 text-[7px]">ROOMS_CLUSTER</span>
+    <div style={{ ...base, width: "100%", height: "100%", padding: 10, fontSize: 9, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `1px solid ${border}`, paddingBottom: 4 }}>
+        <span style={{ ...accent, fontWeight: 700 }}>RIVORA_VISUALIZER</span>
       </div>
-      {/* Grid Occupancy Map */}
-      <div className="grid grid-cols-4 gap-1 py-2 justify-center">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 4, padding: "8px 0", justifyItems: "center" }}>
         {Array.from({ length: 8 }).map((_, i) => (
-          <div 
-            key={i}
-            className={`w-4 h-4 rounded border flex items-center justify-center text-[7px] font-bold ${
-              (i + ticker) % 3 === 0 
-                ? 'bg-purple-500/30 border-purple-400/80 text-white shadow-[0_0_5px_rgba(168,85,247,0.3)]' 
-                : 'bg-black/40 border-white/5 text-slate-600'
-            }`}
-          >
+          <div key={i} style={{
+            width: 16, height: 16, borderRadius: 4,
+            border: `1px solid ${(i + ticker) % 3 === 0 ? "rgba(240,237,232,0.6)" : border}`,
+            background: (i + ticker) % 3 === 0 ? "rgba(240,237,232,0.14)" : "rgba(240,237,232,0.02)",
+            fontSize: 7, display: "flex", alignItems: "center", justifyContent: "center", ...label,
+          }}>
             {i + 1}
           </div>
         ))}
       </div>
-      <div className="text-[7px] text-slate-400 text-center">OCCUPANCY: 42%</div>
+      <div style={{ ...label, fontSize: 7, textAlign: "center" }}>OCCUPANCY: 42%</div>
     </div>
   );
-};
+}
 
-// --- MAIN PROJECTSPAGE COMPONENT ---
-export default function Projectspage({ onOpenCaseStudy }) {
+/* ─────────────────────────────────────────────────────────────────────────────
+   Project card — tilt via framer-motion (not gsap), matching site-wide
+   mouse-parallax pattern used in Heropage / Aboutpage / SkillsGalaxy
+───────────────────────────────────────────────────────────────────────────── */
+function ProjectCard({ proj, index, onOpenCaseStudy }) {
+  const rotX = useMotionValue(0);
+  const rotY = useMotionValue(0);
+  const springX = useSpring(rotX, { stiffness: 150, damping: 18 });
+  const springY = useSpring(rotY, { stiffness: 150, damping: 18 });
 
-  const handleCardMouseMove = (e, el) => {
-    if (!el) return;
-    const { left, top, width, height } = el.getBoundingClientRect();
-    const x = (e.clientX - left) / width - 0.5;
-    const y = (e.clientY - top) / height - 0.5;
+  const handleMove = useCallback((e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const nx = (e.clientX - rect.left) / rect.width - 0.5;
+    const ny = (e.clientY - rect.top) / rect.height - 0.5;
+    rotY.set(nx * 10);
+    rotX.set(-ny * 10);
+  }, [rotX, rotY]);
 
-    gsap.to(el, {
-      rotateY: x * 12,
-      rotateX: -y * 12,
-      translateZ: 20,
-      duration: 0.3,
-      ease: "power2.out"
-    });
-  };
-
-  const handleCardMouseLeave = (el) => {
-    if (!el) return;
-    gsap.to(el, {
-      rotateY: 0,
-      rotateX: 0,
-      translateZ: 0,
-      duration: 0.5,
-      ease: "elastic.out(1, 0.4)"
-    });
-  };
+  const handleLeave = useCallback(() => {
+    rotX.set(0);
+    rotY.set(0);
+  }, [rotX, rotY]);
 
   return (
-    <section id="projects" className="relative min-h-screen w-full flex flex-col justify-center py-24 px-6 md:px-12 xl:px-24 bg-[#030014] overflow-hidden border-t border-slate-900">
-      
-      {/* 3D background */}
-      <div className="absolute inset-0 pointer-events-none z-0 opacity-40">
-        <Projects3DBackground />
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 30 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE } },
+      }}
+      onClick={() => onOpenCaseStudy(proj)}
+      onMouseMove={handleMove}
+      onMouseLeave={handleLeave}
+      style={{
+        cursor: "pointer",
+        position: "relative",
+        borderRadius: 20,
+        border: `1px solid ${C.faint}`,
+        background: "rgba(240,237,232,0.02)",
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
+        overflow: "hidden",
+        padding: "24px 24px 26px",
+        rotateX: springX,
+        rotateY: springY,
+        transformPerspective: 900,
+      }}
+    >
+      <div style={{ position: "absolute", top: -1, right: -1, width: 18, height: 18, borderTop: `1.5px solid ${C.dim}`, borderRight: `1.5px solid ${C.dim}` }} />
+      <div style={{ position: "absolute", bottom: -1, left: -1, width: 18, height: 18, borderBottom: `1.5px solid ${C.dim}`, borderLeft: `1.5px solid ${C.dim}` }} />
+
+      {/* Screen mockup */}
+      <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 22 }}>
+        <div style={{ width: "88%", aspectRatio: "16/10", background: "#0a0a0a", borderRadius: "10px 10px 0 0", border: `1px solid ${C.faint}`, padding: 6 }}>
+          <div style={{ width: "100%", height: "100%", borderRadius: 4, overflow: "hidden", border: "1px solid rgba(0,0,0,0.6)" }}>
+            <MiniDashboardPreview type={proj.dashboardType} />
+          </div>
+        </div>
+        <div style={{ width: "96%", height: 8, background: "#0a0a0a", borderRadius: "0 0 6px 6px", borderTop: `1px solid ${C.faint}` }} />
       </div>
 
-      {/* Grid Pattern Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] pointer-events-none z-0" />
+      {/* Info */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "left" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <SparkeStar size={13} color="rgba(240,237,232,0.7)" speed={STAR_SPEEDS[index % STAR_SPEEDS.length]} delay={STAR_DELAYS[index % STAR_DELAYS.length]} />
+            <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: 19, color: C.white, margin: 0, letterSpacing: "0.01em" }}>
+              {proj.title}
+            </h3>
+          </div>
+          <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: C.dim, whiteSpace: "nowrap" }}>
+            {proj.duration}
+          </span>
+        </div>
 
-      {/* Section Header */}
-      <div className="relative w-full max-w-7xl mx-auto z-10 mb-20 flex flex-col text-left">
-        <span className="text-xs font-bold font-mono tracking-[0.25em] text-purple-400 uppercase">Deliverables Inventory</span>
-        <h2 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-none mt-2">
-          Featured <span className="text-gradient-purple-cyan font-extrabold">Projects</span>
-        </h2>
+        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(240,237,232,0.4)", margin: 0 }}>
+          {proj.role}
+        </p>
+
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", borderRadius: 12, border: `1px solid ${C.faint}`, background: "rgba(240,237,232,0.02)" }}>
+          <TrendingUp size={15} style={{ flexShrink: 0, marginTop: 2, color: "rgba(240,237,232,0.6)" }} />
+          <p style={{ fontFamily: "'EB Garamond', Georgia, serif", fontSize: 14, lineHeight: 1.5, color: "rgba(240,237,232,0.72)", margin: 0 }}>
+            {proj.impact}
+          </p>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 14, marginTop: 4, borderTop: `1px solid ${C.faint}` }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {proj.technologies.slice(0, 3).map((tech) => (
+              <span key={tech} style={{ fontFamily: "monospace", fontSize: 9.5, padding: "3px 9px", borderRadius: 999, border: "1px solid rgba(240,237,232,0.14)", background: "rgba(240,237,232,0.03)", color: "rgba(240,237,232,0.6)" }}>
+                {tech}
+              </span>
+            ))}
+            {proj.technologies.length > 3 && (
+              <span style={{ fontFamily: "monospace", fontSize: 9.5, padding: "3px 9px", borderRadius: 999, border: "1px solid rgba(240,237,232,0.1)", color: "rgba(240,237,232,0.35)" }}>
+                +{proj.technologies.length - 3}
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "monospace", fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(240,237,232,0.75)", whiteSpace: "nowrap" }}>
+            Case Study
+            <ArrowUpRight size={13} />
+          </div>
+        </div>
       </div>
+    </motion.div>
+  );
+}
 
-      {/* APPLE-STYLE SCROLL CARD GRID */}
-      <div className="relative w-full max-w-7xl mx-auto z-10 grid grid-cols-1 md:grid-cols-2 gap-12">
-        {PROJECTS_DATA.map((proj, idx) => {
-          let cardRef = React.createRef();
-          return (
-            <motion.div
-              key={proj.id}
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 0.8, ease: "easeOut", delay: (idx % 2) * 0.2 }}
-              onClick={() => onOpenCaseStudy(proj)}
-              className="cursor-pointer group relative rounded-3xl"
-            >
-              {/* Glow Behind */}
-              <div 
-                className="absolute -inset-1 rounded-[28px] opacity-10 group-hover:opacity-20 blur-2xl transition duration-500 pointer-events-none"
-                style={{ backgroundColor: proj.color }}
-              />
+/* ─────────────────────────────────────────────────────────────────────────────
+   Main Projectspage export — restyled to match Hero/About/Skills
+───────────────────────────────────────────────────────────────────────────── */
+export default function Projectspage({ onOpenCaseStudy }) {
+  const rawX = useMotionValue(0);
+  const rawY = useMotionValue(0);
+  const rawDotX = useMotionValue(0);
+  const rawDotY = useMotionValue(0);
 
-              {/* Glass Card Container */}
-              <div
-                ref={cardRef}
-                onMouseMove={(e) => handleCardMouseMove(e, cardRef.current)}
-                onMouseLeave={() => handleCardMouseLeave(cardRef.current)}
-                style={{ transformStyle: 'preserve-3d', perspective: 1000 }}
-                className={`relative w-full rounded-3xl bg-gradient-to-b ${proj.accentClass} border flex flex-col justify-between p-8 md:p-10 shadow-2xl transition-all duration-300 overflow-hidden min-h-[460px]`}
-              >
-                {/* Visual Laptop Mockup */}
-                <div 
-                  className="w-full flex flex-col items-center mb-8" 
-                  style={{ transform: 'translateZ(30px)' }}
-                >
-                  {/* Outer Bevel Frame */}
-                  <div className="w-[85%] aspect-[16/10] bg-[#1c1a2c] rounded-t-xl border border-white/10 p-2 shadow-inner relative flex items-center justify-center">
-                    {/* Screen panel holding live dashboard */}
-                    <div className="w-full h-full bg-black rounded overflow-hidden border border-black relative">
-                      <MiniDashboardPreview type={proj.dashboardType} color={proj.color} />
-                    </div>
-                  </div>
-                  {/* Laptop Base Bevel */}
-                  <div className="w-[95%] h-2.5 bg-[#2a283e] rounded-b-md shadow-lg border-t border-white/5 relative flex justify-center">
-                    {/* Trackpad marker */}
-                    <div className="w-[18%] h-1 bg-[#1a182b] rounded-b opacity-45" />
-                  </div>
-                </div>
+  const SPRING = { stiffness: 60, damping: 18, mass: 0.9 };
+  const rotateX = useSpring(rawY, SPRING);
+  const rotateY = useSpring(rawX, SPRING);
+  const moveX = useSpring(rawDotX, SPRING);
+  const moveY = useSpring(rawDotY, SPRING);
 
-                {/* Info and Impact */}
-                <div style={{ transform: 'translateZ(20px)' }} className="flex flex-col text-left space-y-3 mt-auto">
-                  <div className="flex items-center justify-between w-full">
-                    <h3 className="text-2xl font-bold text-white tracking-tight group-hover:text-cyan-400 transition-colors">
-                      {proj.title}
-                    </h3>
-                    <span className="text-[10px] font-mono text-purple-400 uppercase tracking-widest font-semibold">{proj.duration}</span>
-                  </div>
+  const handleMouseMove = useCallback((e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+    const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    rawX.set(nx * 8);
+    rawY.set(-ny * 6);
+    rawDotX.set(-nx * 35);
+    rawDotY.set(-ny * 30);
+  }, [rawX, rawY, rawDotX, rawDotY]);
 
-                  <p className="text-xs font-semibold uppercase text-slate-400 tracking-wider">
-                    {proj.role}
-                  </p>
+  const handleMouseLeave = useCallback(() => {
+    rawX.set(0);
+    rawY.set(0);
+    rawDotX.set(0);
+    rawDotY.set(0);
+  }, [rawX, rawY, rawDotX, rawDotY]);
 
-                  <div className="flex gap-2.5 items-start bg-white/3 border border-white/5 p-3 rounded-xl mt-2 select-none">
-                    <TrendingUp className="w-4.5 h-4.5 flex-shrink-0 mt-0.5" style={{ color: proj.color }} />
-                    <p className="text-xs text-slate-300 leading-normal font-medium">
-                      {proj.impact}
-                    </p>
-                  </div>
+  return (
+    <section
+      id="projects"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        position: "relative",
+        width: "100%",
+        minHeight: "100vh",
+        background: "transparent",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "90px 0",
+        perspective: "1100px",
+        perspectiveOrigin: "50% 50%",
+      }}
+    >
+      <style>{`
+        @keyframes starSpinY {
+          0%   { transform: rotateY(0deg); }
+          100% { transform: rotateY(360deg); }
+        }
+        @keyframes dotFloat {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-8px); }
+        }
+      `}</style>
 
-                  {/* Technology icons and view metrics */}
-                  <div className="flex justify-between items-end pt-4 border-t border-white/5 mt-4">
-                    <div className="flex flex-wrap gap-1.5">
-                      {proj.technologies.slice(0, 3).map((tech, i) => (
-                        <span key={i} className="text-[9px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/5 text-slate-300 font-semibold select-none">
-                          {tech}
-                        </span>
-                      ))}
-                      {proj.technologies.length > 3 && (
-                        <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/5 text-slate-500 font-bold select-none">
-                          +{proj.technologies.length - 3}
-                        </span>
-                      )}
-                    </div>
+      <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%)", pointerEvents: "none", zIndex: 1 }} />
 
-                    <div className="inline-flex items-center gap-1.5 text-[9px] font-mono font-bold tracking-widest uppercase" style={{ color: proj.color }}>
-                      Inspect Case Study
-                      <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
+      <motion.div style={{ position: "absolute", inset: 0, rotateX, rotateY, x: moveX, y: moveY, transformStyle: "preserve-3d", willChange: "transform" }}>
+        {GLOW_ORBS.map((dot, i) => (
+          <motion.div
+            key={`glow-${i}`}
+            aria-hidden
+            initial={{ opacity: 0 }}
+            animate={{ opacity: dot.op }}
+            transition={{ delay: dot.delay, duration: 1.2 }}
+            style={{
+              position: "absolute", top: dot.top, left: dot.left, width: dot.size, height: dot.size, borderRadius: "50%",
+              background: "rgba(255,255,255,0.88)", filter: `blur(${dot.blur}px)`,
+              boxShadow: `0 0 ${dot.blur * 2}px ${dot.blur}px rgba(255,255,255,0.15), 0 0 ${dot.blur * 4}px ${dot.blur * 2}px rgba(255,255,255,0.06)`,
+              zIndex: 5, animation: `dotFloat ${dot.dur} ${dot.animDelay} ease-in-out infinite`, pointerEvents: "none",
+            }}
+          />
+        ))}
+      </motion.div>
+
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.9, ease: EASE }}
+          style={{ marginBottom: 40, textAlign: "left" }}
+        >
+          <span style={{ fontFamily: "monospace", fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: C.dim }}>
+            Deliverables
+          </span>
+          <h2 style={{ fontFamily: "'EB Garamond', Georgia, serif", fontWeight: 400, fontSize: "clamp(1.9rem, 3.4vw, 2.6rem)", color: "rgba(240,237,232,0.92)", margin: "8px 0 0" }}>
+            Featured Projects
+          </h2>
+          <div style={{ height: 1, width: 96, background: "rgba(240,237,232,0.15)", marginTop: 20 }} />
+        </motion.div>
+
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.16 } } }}
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24 }}
+        >
+          {PROJECTS_DATA.map((proj, idx) => (
+            <ProjectCard key={proj.id} proj={proj} index={idx} onOpenCaseStudy={onOpenCaseStudy} />
+          ))}
+        </motion.div>
       </div>
-
     </section>
   );
 }

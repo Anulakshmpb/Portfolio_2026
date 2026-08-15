@@ -1,5 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, useScroll, useTransform, useSpring, useVelocity } from 'framer-motion';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useVelocity,
+  useReducedMotion,
+} from 'framer-motion';
 import Navbar from './Modules/Navbar';
 import Heropage from './Modules/Heropage';
 import Aboutpage from './Modules/Aboutpage';
@@ -11,26 +18,80 @@ import Footer from './Modules/Footer';
 import CaseStudyPage from './Modules/CaseStudyPage';
 import './App.css';
 
-/* ─────────────────────────────────────────────────────────────
-   WARP TUNNEL — streaking star lines that react to scroll speed,
-   giving a "flying forward through space" feel while scrolling.
-───────────────────────────────────────────────────────────────── */
-function WarpTunnel({ scrollYProgress }) {
+/* DUST / STARFIELD */
+function ParticleBackground({ reduced, scrollYProgress }) {
   const canvasRef = useRef(null);
-  const rawVelocity = useVelocity(scrollYProgress);
-  const velocity = useSpring(rawVelocity, { stiffness: 400, damping: 60 });
+  const smoothScroll = useSpring(scrollYProgress, { stiffness: 120, damping: 30 });
 
   useEffect(() => {
+    if (reduced) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    let w, h, cx, cy;
-    let raf;
+    let w, h, raf;
 
-    const streaks = Array.from({ length: 140 }, () => ({
+    const COUNT = window.innerWidth < 768 ? 40 : 90;
+    const dust = Array.from({ length: COUNT }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      r: Math.random() * 1.6 + 0.4,
+      o: Math.random() * 0.5 + 0.1,
+      parallax: Math.random() * 0.6 + 0.2,
+    }));
+
+    const resize = () => {
+      w = canvas.width = canvas.offsetWidth;
+      h = canvas.height = canvas.offsetHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const draw = () => {
+      const sp = smoothScroll.get();
+      ctx.clearRect(0, 0, w, h);
+      dust.forEach((d) => {
+        const x = d.x * w;
+        const y = (((d.y - sp * d.parallax) % 1) + 1) % 1 * h;
+        ctx.beginPath();
+        ctx.arc(x, y, d.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${d.o})`;
+        ctx.fill();
+      });
+      raf = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+    };
+  }, [reduced, smoothScroll]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10 }}
+    />
+  );
+}
+
+/* WARP TUNNEL */
+function WarpTunnel({ scrollYProgress, reduced }) {
+  const canvasRef = useRef(null);
+  const rawVelocity = useVelocity(scrollYProgress);
+  const velocity = useSpring(rawVelocity, { stiffness: 300, damping: 40 });
+
+  useEffect(() => {
+    if (reduced) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    let w, h, cx, cy, raf;
+
+    const COUNT = window.innerWidth < 768 ? 70 : 180;
+    const streaks = Array.from({ length: COUNT }, () => ({
       angle: Math.random() * Math.PI * 2,
-      dist: Math.random() * 0.9 + 0.05,
-      len: Math.random() * 40 + 10,
-      speed: Math.random() * 0.6 + 0.4,
+      dist: Math.random() * 0.95 + 0.02,
+      len: Math.random() * 55 + 15,
+      speed: Math.random() * 0.7 + 0.3,
     }));
 
     const resize = () => {
@@ -43,30 +104,26 @@ function WarpTunnel({ scrollYProgress }) {
     window.addEventListener('resize', resize);
 
     const draw = () => {
-      const v = Math.min(Math.abs(velocity.get()) * 3, 1); // 0..1 warp intensity
+      const v = Math.min(Math.abs(velocity.get()) * 5 + 0.05, 1);
       ctx.clearRect(0, 0, w, h);
-
       if (v > 0.02) {
         streaks.forEach((s) => {
-          s.dist += s.speed * v * 0.03;
-          if (s.dist > 1) s.dist = 0.05;
-
-          const r = s.dist * Math.max(w, h) * 0.7;
+          s.dist += s.speed * v * 0.05;
+          if (s.dist > 1) s.dist = 0.02;
+          const r = s.dist * Math.max(w, h) * 0.85;
           const x = cx + Math.cos(s.angle) * r;
           const y = cy + Math.sin(s.angle) * r;
-          const trail = s.len * (0.3 + v);
-          const x2 = cx + Math.cos(s.angle) * (r - trail);
-          const y2 = cy + Math.sin(s.angle) * (r - trail);
-
-          ctx.strokeStyle = `rgba(255,255,255,${0.08 + v * 0.5 * s.dist})`;
-          ctx.lineWidth = 1 + v * 1.5;
+          const trail = s.len * (0.4 + v * 1.6);
+          const x2 = cx + Math.cos(s.angle) * Math.max(0, r - trail);
+          const y2 = cy + Math.sin(s.angle) * Math.max(0, r - trail);
+          ctx.strokeStyle = `rgba(255,255,255,${0.08 + v * 0.75 * s.dist})`;
+          ctx.lineWidth = 1 + v * 2.4;
           ctx.beginPath();
           ctx.moveTo(x, y);
           ctx.lineTo(x2, y2);
           ctx.stroke();
         });
       }
-
       raf = requestAnimationFrame(draw);
     };
     draw();
@@ -75,65 +132,99 @@ function WarpTunnel({ scrollYProgress }) {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
     };
-  }, [velocity]);
+  }, [velocity, reduced]);
 
   return (
     <canvas
       ref={canvasRef}
+      style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 40, mixBlendMode: 'screen' }}
+    />
+  );
+}
+
+/* FIXED-VIEWPORT ZOOM SCENE — scale + opacity only, no blur, no vertical translation */
+function SceneLayer({ children, index, totalScenes, scrollYProgress, reduced }) {
+  const seg = 1 / totalScenes;
+  const segStart = index * seg;
+  const segEnd = segStart + seg;
+  const at = (localStops) => localStops.map((f) => segStart + f * (segEnd - segStart));
+
+  const isFirst = index === 0;
+  const isLast = index === totalScenes - 1;
+
+  const scaleStops = isFirst ? [0, 0.68, 1] : [0, 0.1, 0.42, 0.68, 1];
+  const scaleVals = isFirst ? [1, 1, 2.6] : [0.12, 0.4, 1, 1, 2.6];
+  const opStops = isFirst ? [0, 0.68, 0.92] : [0, 0.08, 0.22, 0.68, 0.92];
+  const opVals = isFirst ? [1, 1, 0] : [0, 0.3, 1, 1, 0];
+
+  const finalScaleStops = isLast ? [0, 0.1, 0.42, 1] : scaleStops;
+  const finalScaleVals = isLast ? [0.12, 0.4, 1, 1] : scaleVals;
+  const finalOpStops = isLast ? [0, 0.08, 0.22, 1] : opStops;
+  const finalOpVals = isLast ? [0, 0.3, 1, 1] : opVals;
+
+  const scale = useTransform(scrollYProgress, at(finalScaleStops), finalScaleVals);
+  const opacity = useTransform(scrollYProgress, at(finalOpStops), finalOpVals);
+
+  const smoothScale = useSpring(scale, { stiffness: 210, damping: 34, mass: 0.3 });
+  const smoothOpacity = useSpring(opacity, { stiffness: 260, damping: 40 });
+
+  const style = reduced
+    ? { opacity }
+    : {
+      scale: smoothScale,
+      opacity: smoothOpacity,
+      transformOrigin: '50% 50%',
+      willChange: 'transform, opacity',
+    };
+
+  return (
+    <motion.div
       style={{
         position: 'fixed',
         inset: 0,
         width: '100%',
         height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        zIndex: totalScenes - index,
         pointerEvents: 'none',
-        zIndex: 40,
-        mixBlendMode: 'screen',
+        ...style,
       }}
-    />
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   FLY-THROUGH SECTION — scales up from distance, holds sharp
-   while centered in view, then rushes past (scales/fades out)
-   as the next section arrives — mimicking a camera flythrough.
-───────────────────────────────────────────────────────────────── */
-function FlySection({ children }) {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ['start end', 'end start'],
-  });
-
-  // Enter: blurry + slightly small, sharpens to full clarity centered.
-  // Hold: sharp, full size while centered in viewport.
-  // Exit: zooms IN from center (scale up) while fading + blurring out —
-  //        content appears to rush toward/through the viewer.
-  const scale = useTransform(scrollYProgress, [0, 0.3, 0.55, 1], [0.9, 1, 1, 1.6]);
-  const opacity = useTransform(scrollYProgress, [0, 0.18, 0.55, 0.85], [0, 1, 1, 0]);
-  const blur = useTransform(scrollYProgress, [0, 0.18, 0.55, 0.85], [14, 0, 0, 18]);
-  const filter = useTransform(blur, (b) => `blur(${b}px)`);
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <motion.div
-        style={{
-          scale,
-          opacity,
-          filter,
-          transformOrigin: 'center center',
-          willChange: 'transform, opacity, filter',
-        }}
-      >
+    >
+      <div style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}>
         {children}
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 }
+
+const VH_PER_SCENE = 200;
 
 function App() {
   const [activeCaseStudy, setActiveCaseStudy] = useState(null);
-  const { scrollYProgress } = useScroll();
+  const reduced = useReducedMotion();
+
+  const scenesWrapperRef = useRef(null);
+  const { scrollYProgress: scenesProgress } = useScroll({
+    target: scenesWrapperRef,
+    offset: ['start start', 'end end'],
+  });
+
+  const { scrollYProgress: pageProgress } = useScroll();
+
+  const scenes = useMemo(
+    () => [
+      <Heropage key="hero" />,
+      <Aboutpage key="about" />,
+      <Experiencepage key="exp" />,
+      <SkillsGalaxy key="skills" />,
+      <Projectspage key="proj" onOpenCaseStudy={(proj) => setActiveCaseStudy(proj)} />,
+      <Contactpage key="contact" />,
+    ],
+    []
+  );
 
   if (activeCaseStudy) {
     return (
@@ -144,34 +235,25 @@ function App() {
   }
 
   return (
-    <div className="App" style={{ position: 'relative', background: '#000000' }}>
-      <WarpTunnel scrollYProgress={scrollYProgress} />
+    <div className="App" style={{ position: 'relative', background: '#050505', minHeight: '100vh', overflowX: 'hidden' }}>
+      <div style={{ position: 'fixed', inset: 0, background: '#050505', zIndex: 0, pointerEvents: 'none' }} />
 
-      {/* <Navbar /> */}
+      <ParticleBackground reduced={reduced} scrollYProgress={pageProgress} />
+      <WarpTunnel scrollYProgress={pageProgress} reduced={reduced} />
 
-      <FlySection>
-        <Heropage />
-      </FlySection>
-
-      <FlySection>
-        <Aboutpage />
-      </FlySection>
-
-      <FlySection>
-        <Experiencepage />
-      </FlySection>
-
-      <FlySection>
-        <SkillsGalaxy />
-      </FlySection>
-
-      <FlySection>
-        <Projectspage onOpenCaseStudy={(proj) => setActiveCaseStudy(proj)} />
-      </FlySection>
-
-      <FlySection>
-        <Contactpage />
-      </FlySection>
+      <div ref={scenesWrapperRef} style={{ position: 'relative', height: `${VH_PER_SCENE * scenes.length}vh` }}>
+        {scenes.map((scene, i) => (
+          <SceneLayer
+            key={i}
+            index={i}
+            totalScenes={scenes.length}
+            scrollYProgress={scenesProgress}
+            reduced={reduced}
+          >
+            {scene}
+          </SceneLayer>
+        ))}
+      </div>
 
       <Footer />
     </div>

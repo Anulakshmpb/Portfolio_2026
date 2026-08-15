@@ -434,7 +434,7 @@ export default function HomePage() {
           width: "100%",
           height: "100vh",
           minHeight: 600,
-          background: C.bg,
+          background: "transparent",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -443,7 +443,7 @@ export default function HomePage() {
         }}
       >
         {/* ── Galaxy star field — STATIC background ── */}
-        <StarField />
+        {/* StarField removed in favor of global fixed canvas backdrop in App.js */}
 
         {/* ── Subtle vignette — STATIC ── */}
         <div

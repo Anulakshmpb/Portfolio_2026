@@ -210,11 +210,11 @@ export default function Aboutpage() {
       id="about"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative min-h-screen w-full flex items-center justify-center bg-black overflow-hidden px-6"
+      className="relative min-h-screen w-full flex items-center justify-center bg-transparent overflow-hidden px-6"
       style={{ perspective: "1100px", perspectiveOrigin: "50% 50%" }}
     >
       <StarKeyframes />
-      <Starfield />
+      {/* Local starfield canvas removed in favor of global fixed canvas backdrop in App.js */}
 
       {/* Subtle Vignette */}
       <div

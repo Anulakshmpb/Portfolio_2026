@@ -240,7 +240,7 @@ export default function Experiencepage() {
       id="experience"
       onMouseMove={handleSectionMouseMove}
       onMouseLeave={handleSectionMouseLeave}
-      className="relative min-h-screen w-full flex flex-col justify-center py-24 px-6 md:px-12 xl:px-24 bg-black overflow-hidden"
+      className="relative min-h-screen w-full flex flex-col justify-center py-24 px-6 md:px-12 xl:px-24 bg-transparent overflow-hidden"
       style={{ perspective: "1100px", perspectiveOrigin: "50% 50%" }}
     >
       <style>{`
@@ -250,8 +250,7 @@ export default function Experiencepage() {
         }
       `}</style>
 
-      {/* Shared starfield canvas */}
-      <Starfield />
+      {/* Local starfield canvas removed in favor of global fixed canvas backdrop in App.js */}
 
       {/* Vignette */}
       <div
