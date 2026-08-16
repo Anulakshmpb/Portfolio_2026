@@ -13,7 +13,7 @@ import Experiencepage from './Modules/Experiencepage';
 import SkillsGalaxy from './Modules/SkillsGalaxy';
 import Projectspage from './Modules/Projectspage';
 import Contactpage from './Modules/Contactpage';
-import Footer from './Modules/Footer';
+// import Footer from './Modules/Footer';
 import CaseStudyPage from './Modules/CaseStudyPage';
 import './App.css';
 
@@ -254,7 +254,7 @@ function App() {
         ))}
       </div>
 
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }

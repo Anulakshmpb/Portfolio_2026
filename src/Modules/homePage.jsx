@@ -15,11 +15,11 @@ const C = {
 };
 
 const EASE = [0.22, 1, 0.36, 1];
-const fade = (d = 0, y = 20) => ({
-  initial: { opacity: 0, y },
-  animate: { opacity: 1, y: 0 },
-  transition: { delay: d, duration: 0.9, ease: EASE },
-});
+// const fade = (d = 0, y = 20) => ({
+//   initial: { opacity: 0, y },
+//   animate: { opacity: 1, y: 0 },
+//   transition: { delay: d, duration: 0.9, ease: EASE },
+// });
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Star Field — three-tier galaxy star field (dust / stars / bright)
