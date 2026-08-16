@@ -232,6 +232,9 @@ export default function SkillsGalaxy() {
           y: moveY,
           transformStyle: "preserve-3d",
           willChange: "transform",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
         {GLOW_ORBS.map((dot, i) => (
@@ -257,7 +260,6 @@ export default function SkillsGalaxy() {
             }}
           />
         ))}
-      </motion.div>
 
       {/* Content — capped to viewport, grid sized to never need scroll */}
       <div className="relative z-10 w-full max-w-6xl mx-auto px-6" style={{ maxHeight: "92vh" }}>
@@ -312,6 +314,7 @@ export default function SkillsGalaxy() {
           ))}
         </motion.div>
       </div>
+      </motion.div>
     </section>
   );
 }

@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useRef } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
-import { TrendingUp, ArrowUpRight } from "lucide-react";
+import { TrendingUp, ArrowUpRight, ArrowLeft, ArrowRight } from "lucide-react";
+import { gsap } from "gsap";
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Design tokens — identical to Heropage / Aboutpage / SkillsGalaxy
+   Design tokens — identical to Heropage / Aboutpage / SkillsGalaxy / Experiencepage
 ───────────────────────────────────────────────────────────────────────────── */
 const C = {
   bg: "#000000",
@@ -33,20 +34,20 @@ function SparkeStar({ size = 13, color = "rgba(240,237,232,0.6)", speed = "3s", 
 
 /* Soft glowing accent orbs — same set used site-wide */
 const GLOW_ORBS = [
-  { top: "30%", left: "44%", size: 7,  blur: 10, delay: 1.4, animDelay: "1.5s", dur: "3s",   op: 0.55 },
-  { top: "22%", left: "18%", size: 9,  blur: 14, delay: 1.7, animDelay: "0.8s", dur: "3.8s", op: 0.40 },
+  { top: "30%", left: "44%", size: 7, blur: 10, delay: 1.4, animDelay: "1.5s", dur: "3s", op: 0.55 },
+  { top: "22%", left: "18%", size: 9, blur: 14, delay: 1.7, animDelay: "0.8s", dur: "3.8s", op: 0.40 },
   { top: "68%", left: "72%", size: 11, blur: 18, delay: 2.0, animDelay: "2.1s", dur: "4.2s", op: 0.35 },
-  { top: "15%", left: "60%", size: 6,  blur: 12, delay: 1.9, animDelay: "1.0s", dur: "3.4s", op: 0.45 },
+  { top: "15%", left: "60%", size: 6, blur: 12, delay: 1.9, animDelay: "1.0s", dur: "3.4s", op: 0.45 },
   { top: "55%", left: "25%", size: 10, blur: 16, delay: 2.2, animDelay: "3.0s", dur: "4.8s", op: 0.30 },
-  { top: "80%", left: "50%", size: 8,  blur: 14, delay: 2.5, animDelay: "0.5s", dur: "3.6s", op: 0.28 },
+  { top: "80%", left: "50%", size: 8, blur: 14, delay: 2.5, animDelay: "0.5s", dur: "3.6s", op: 0.28 },
   { top: "40%", left: "82%", size: 12, blur: 20, delay: 2.8, animDelay: "1.8s", dur: "5.0s", op: 0.25 },
-  { top: "10%", left: "35%", size: 7,  blur: 11, delay: 1.6, animDelay: "2.5s", dur: "3.2s", op: 0.38 },
-  { top: "72%", left: "12%", size: 9,  blur: 15, delay: 3.0, animDelay: "0.3s", dur: "4.0s", op: 0.22 },
-  { top: "48%", left: "92%", size: 6,  blur: 10, delay: 2.1, animDelay: "1.3s", dur: "3.5s", op: 0.32 },
+  { top: "10%", left: "35%", size: 7, blur: 11, delay: 1.6, animDelay: "2.5s", dur: "3.2s", op: 0.38 },
+  { top: "72%", left: "12%", size: 9, blur: 15, delay: 3.0, animDelay: "0.3s", dur: "4.0s", op: 0.22 },
+  { top: "48%", left: "92%", size: 6, blur: 10, delay: 2.1, animDelay: "1.3s", dur: "3.5s", op: 0.32 },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Project data — unchanged content, muted starfield-friendly accent color
+   Project data — unchanged content
 ───────────────────────────────────────────────────────────────────────────── */
 const PROJECTS_DATA = [
   {
@@ -88,13 +89,12 @@ const PROJECTS_DATA = [
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Mini live dashboard preview — retained, restyled to bone/cream tones
-   so it sits inside the starfield palette instead of neon accent colors
+   Mini live dashboard preview
 ───────────────────────────────────────────────────────────────────────────── */
 function MiniDashboardPreview({ type }) {
-  const [ticker, setTicker] = useState(0);
+  const [ticker, setTicker] = React.useState(0);
 
-  useEffect(() => {
+  React.useEffect(() => {
     const timer = setInterval(() => setTicker((p) => (p + 1) % 100), 1500);
     return () => clearInterval(timer);
   }, []);
@@ -199,107 +199,123 @@ function MiniDashboardPreview({ type }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Project card — tilt via framer-motion (not gsap), matching site-wide
-   mouse-parallax pattern used in Heropage / Aboutpage / SkillsGalaxy
+   Project card with interactive mouse tilt
 ───────────────────────────────────────────────────────────────────────────── */
 function ProjectCard({ proj, index, onOpenCaseStudy }) {
-  const rotX = useMotionValue(0);
-  const rotY = useMotionValue(0);
-  const springX = useSpring(rotX, { stiffness: 150, damping: 18 });
-  const springY = useSpring(rotY, { stiffness: 150, damping: 18 });
+  const cardRef = useRef(null);
 
-  const handleMove = useCallback((e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const nx = (e.clientX - rect.left) / rect.width - 0.5;
-    const ny = (e.clientY - rect.top) / rect.height - 0.5;
-    rotY.set(nx * 10);
-    rotX.set(-ny * 10);
-  }, [rotX, rotY]);
+  const handleCardMouseMove = (e) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    gsap.to(cardRef.current, {
+      rotateY: x * 8,
+      rotateX: -y * 8,
+      translateZ: 10,
+      duration: 0.3,
+      ease: "power2.out",
+    });
+  };
 
-  const handleLeave = useCallback(() => {
-    rotX.set(0);
-    rotY.set(0);
-  }, [rotX, rotY]);
+  const handleCardMouseLeave = () => {
+    if (!cardRef.current) return;
+    gsap.to(cardRef.current, {
+      rotateY: 0,
+      rotateX: 0,
+      translateZ: 0,
+      duration: 0.5,
+      ease: "power2.out",
+    });
+  };
 
   return (
     <motion.div
-      variants={{
-        hidden: { opacity: 0, y: 30 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: EASE } },
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.6, delay: index * 0.12, ease: EASE }}
+      className="flex-shrink-0 group cursor-pointer"
+      style={{
+        width: "min(82vw, 380px)",
+        perspective: "1000px",
       }}
       onClick={() => onOpenCaseStudy(proj)}
-      onMouseMove={handleMove}
-      onMouseLeave={handleLeave}
-      style={{
-        cursor: "pointer",
-        position: "relative",
-        borderRadius: 20,
-        border: `1px solid ${C.faint}`,
-        background: "rgba(240,237,232,0.02)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-        overflow: "hidden",
-        padding: "24px 24px 26px",
-        rotateX: springX,
-        rotateY: springY,
-        transformPerspective: 900,
-      }}
     >
-      <div style={{ position: "absolute", top: -1, right: -1, width: 18, height: 18, borderTop: `1.5px solid ${C.dim}`, borderRight: `1.5px solid ${C.dim}` }} />
-      <div style={{ position: "absolute", bottom: -1, left: -1, width: 18, height: 18, borderBottom: `1.5px solid ${C.dim}`, borderLeft: `1.5px solid ${C.dim}` }} />
+      <div
+        ref={cardRef}
+        onMouseMove={handleCardMouseMove}
+        onMouseLeave={handleCardMouseLeave}
+        style={{
+          position: "relative",
+          borderRadius: 20,
+          border: `1px solid ${C.faint}`,
+          background: "rgba(240,237,232,0.025)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          overflow: "hidden",
+          padding: "20px 20px 22px",
+          transformStyle: "preserve-3d",
+          transition: "border-color 0.3s ease, box-shadow 0.3s ease",
+        }}
+        className="hover:border-white/20 hover:shadow-[0_10px_30px_rgba(255,255,255,0.04)]"
+      >
+        <div style={{ position: "absolute", top: -1, right: -1, width: 18, height: 18, borderTop: `1.5px solid ${C.dim}`, borderRight: `1.5px solid ${C.dim}` }} />
+        <div style={{ position: "absolute", bottom: -1, left: -1, width: 18, height: 18, borderBottom: `1.5px solid ${C.dim}`, borderLeft: `1.5px solid ${C.dim}` }} />
 
-      {/* Screen mockup */}
-      <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 22 }}>
-        <div style={{ width: "88%", aspectRatio: "16/10", background: "#0a0a0a", borderRadius: "10px 10px 0 0", border: `1px solid ${C.faint}`, padding: 6 }}>
-          <div style={{ width: "100%", height: "100%", borderRadius: 4, overflow: "hidden", border: "1px solid rgba(0,0,0,0.6)" }}>
-            <MiniDashboardPreview type={proj.dashboardType} />
+        {/* Screen mockup */}
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 18, transform: "translateZ(15px)" }}>
+          <div style={{ width: "90%", aspectRatio: "16/10", background: "#0a0a0a", borderRadius: "10px 10px 0 0", border: `1px solid ${C.faint}`, padding: 5 }}>
+            <div style={{ width: "100%", height: "100%", borderRadius: 4, overflow: "hidden", border: "1px solid rgba(0,0,0,0.6)" }}>
+              <MiniDashboardPreview type={proj.dashboardType} />
+            </div>
           </div>
+          <div style={{ width: "96%", height: 7, background: "#0a0a0a", borderRadius: "0 0 6px 6px", borderTop: `1px solid ${C.faint}` }} />
         </div>
-        <div style={{ width: "96%", height: 8, background: "#0a0a0a", borderRadius: "0 0 6px 6px", borderTop: `1px solid ${C.faint}` }} />
-      </div>
 
-      {/* Info */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "left" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <SparkeStar size={13} color="rgba(240,237,232,0.7)" speed={STAR_SPEEDS[index % STAR_SPEEDS.length]} delay={STAR_DELAYS[index % STAR_DELAYS.length]} />
-            <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: 19, color: C.white, margin: 0, letterSpacing: "0.01em" }}>
-              {proj.title}
-            </h3>
+        {/* Info */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "left", transform: "translateZ(10px)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <SparkeStar size={12} color="rgba(240,237,232,0.7)" speed={STAR_SPEEDS[index % STAR_SPEEDS.length]} delay={STAR_DELAYS[index % STAR_DELAYS.length]} />
+              <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: 17, color: C.white, margin: 0, letterSpacing: "0.01em" }}>
+                {proj.title}
+              </h3>
+            </div>
+            <span style={{ fontFamily: "monospace", fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: C.dim, whiteSpace: "nowrap" }}>
+              {proj.duration}
+            </span>
           </div>
-          <span style={{ fontFamily: "monospace", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: C.dim, whiteSpace: "nowrap" }}>
-            {proj.duration}
-          </span>
-        </div>
 
-        <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(240,237,232,0.4)", margin: 0 }}>
-          {proj.role}
-        </p>
-
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", borderRadius: 12, border: `1px solid ${C.faint}`, background: "rgba(240,237,232,0.02)" }}>
-          <TrendingUp size={15} style={{ flexShrink: 0, marginTop: 2, color: "rgba(240,237,232,0.6)" }} />
-          <p style={{ fontFamily: "'EB Garamond', Georgia, serif", fontSize: 14, lineHeight: 1.5, color: "rgba(240,237,232,0.72)", margin: 0 }}>
-            {proj.impact}
+          <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 10.5, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(240,237,232,0.4)", margin: 0 }}>
+            {proj.role}
           </p>
-        </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 14, marginTop: 4, borderTop: `1px solid ${C.faint}` }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {proj.technologies.slice(0, 3).map((tech) => (
-              <span key={tech} style={{ fontFamily: "monospace", fontSize: 9.5, padding: "3px 9px", borderRadius: 999, border: "1px solid rgba(240,237,232,0.14)", background: "rgba(240,237,232,0.03)", color: "rgba(240,237,232,0.6)" }}>
-                {tech}
-              </span>
-            ))}
-            {proj.technologies.length > 3 && (
-              <span style={{ fontFamily: "monospace", fontSize: 9.5, padding: "3px 9px", borderRadius: 999, border: "1px solid rgba(240,237,232,0.1)", color: "rgba(240,237,232,0.35)" }}>
-                +{proj.technologies.length - 3}
-              </span>
-            )}
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", borderRadius: 10, border: `1px solid ${C.faint}`, background: "rgba(240,237,232,0.02)" }}>
+            <TrendingUp size={14} style={{ flexShrink: 0, marginTop: 2, color: "rgba(240,237,232,0.6)" }} />
+            <p style={{ fontFamily: "'EB Garamond', Georgia, serif", fontSize: 13, lineHeight: 1.4, color: "rgba(240,237,232,0.72)", margin: 0 }}>
+              {proj.impact}
+            </p>
           </div>
 
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "monospace", fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(240,237,232,0.75)", whiteSpace: "nowrap" }}>
-            Case Study
-            <ArrowUpRight size={13} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, marginTop: 2, borderTop: `1px solid ${C.faint}` }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {proj.technologies.slice(0, 3).map((tech) => (
+                <span key={tech} style={{ fontFamily: "monospace", fontSize: 9, padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(240,237,232,0.14)", background: "rgba(240,237,232,0.03)", color: "rgba(240,237,232,0.6)" }}>
+                  {tech}
+                </span>
+              ))}
+              {proj.technologies.length > 3 && (
+                <span style={{ fontFamily: "monospace", fontSize: 9, padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(240,237,232,0.1)", color: "rgba(240,237,232,0.35)" }}>
+                  +{proj.technologies.length - 3}
+                </span>
+              )}
+            </div>
+
+            <div className="group-hover:underline" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: "monospace", fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(240,237,232,0.85)", whiteSpace: "nowrap" }}>
+              Case Study
+              <ArrowUpRight size={12} />
+            </div>
           </div>
         </div>
       </div>
@@ -308,9 +324,11 @@ function ProjectCard({ proj, index, onOpenCaseStudy }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Main Projectspage export — restyled to match Hero/About/Skills
+   Main Projectspage export
 ───────────────────────────────────────────────────────────────────────────── */
 export default function Projectspage({ onOpenCaseStudy }) {
+  const sliderRef = useRef(null);
+
   const rawX = useMotionValue(0);
   const rawY = useMotionValue(0);
   const rawDotX = useMotionValue(0);
@@ -339,6 +357,12 @@ export default function Projectspage({ onOpenCaseStudy }) {
     rawDotY.set(0);
   }, [rawX, rawY, rawDotX, rawDotY]);
 
+  const scrollSlider = (direction) => {
+    if (!sliderRef.current) return;
+    const scrollAmount = direction === "left" ? -360 : 360;
+    sliderRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+  };
+
   return (
     <section
       id="projects"
@@ -347,13 +371,12 @@ export default function Projectspage({ onOpenCaseStudy }) {
       style={{
         position: "relative",
         width: "100%",
-        minHeight: "100vh",
+        height: "100vh",
         background: "transparent",
         overflow: "hidden",
         display: "flex",
-        alignItems: "center",
+        flexDirection: "column",
         justifyContent: "center",
-        padding: "90px 0",
         perspective: "1100px",
         perspectiveOrigin: "50% 50%",
       }}
@@ -369,9 +392,20 @@ export default function Projectspage({ onOpenCaseStudy }) {
         }
       `}</style>
 
-      <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%)", pointerEvents: "none", zIndex: 1 }} />
+      {/* Vignette */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "radial-gradient(ellipse 80% 80% at 50% 50%, transparent 40%, rgba(0,0,0,0.55) 100%)",
+          pointerEvents: "none",
+          zIndex: 1,
+        }}
+      />
 
-      <motion.div style={{ position: "absolute", inset: 0, rotateX, rotateY, x: moveX, y: moveY, transformStyle: "preserve-3d", willChange: "transform" }}>
+      {/* Parallax ambient dots */}
+      <motion.div style={{ position: "absolute", inset: 0, rotateX, rotateY, x: moveX, y: moveY, transformStyle: "preserve-3d", willChange: "transform", display: "flex", flexDirection: "column", justifyContent: "center" }}>
         {GLOW_ORBS.map((dot, i) => (
           <motion.div
             key={`glow-${i}`}
@@ -387,37 +421,65 @@ export default function Projectspage({ onOpenCaseStudy }) {
             }}
           />
         ))}
-      </motion.div>
 
-      <div className="relative z-10 w-full max-w-6xl mx-auto px-6">
+      {/* Section Header with navigation arrows */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 flex flex-row items-end justify-between" style={{ marginBottom: 20 }}>
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.9, ease: EASE }}
-          style={{ marginBottom: 40, textAlign: "left" }}
+          transition={{ duration: 0.8, ease: EASE }}
+          style={{ textAlign: "left" }}
         >
           <span style={{ fontFamily: "monospace", fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: C.dim }}>
             Deliverables
           </span>
-          <h2 style={{ fontFamily: "'EB Garamond', Georgia, serif", fontWeight: 400, fontSize: "clamp(1.9rem, 3.4vw, 2.6rem)", color: "rgba(240,237,232,0.92)", margin: "8px 0 0" }}>
+          <h2 style={{ fontFamily: "'EB Garamond', Georgia, serif", fontWeight: 400, fontSize: "clamp(1.8rem, 3.2vw, 2.5rem)", color: "rgba(240,237,232,0.92)", margin: "4px 0 0" }}>
             Featured Projects
           </h2>
-          <div style={{ height: 1, width: 96, background: "rgba(240,237,232,0.15)", marginTop: 20 }} />
+          <div style={{ height: 1, width: 80, background: "rgba(240,237,232,0.15)", marginTop: 12 }} />
         </motion.div>
 
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-80px" }}
-          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.16 } } }}
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24 }}
+        {/* Carousel arrows */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => scrollSlider("left")}
+            className="p-2.5 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all flex items-center justify-center cursor-pointer"
+            aria-label="Previous project"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => scrollSlider("right")}
+            className="p-2.5 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all flex items-center justify-center cursor-pointer"
+            aria-label="Next project"
+          >
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Horizontal smooth slider */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12">
+        <div
+          ref={sliderRef}
+          className="flex gap-6 overflow-x-auto py-4 scroll-smooth relative z-10"
+          style={{
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+          }}
         >
           {PROJECTS_DATA.map((proj, idx) => (
-            <ProjectCard key={proj.id} proj={proj} index={idx} onOpenCaseStudy={onOpenCaseStudy} />
+            <ProjectCard
+              key={proj.id}
+              proj={proj}
+              index={idx}
+              onOpenCaseStudy={onOpenCaseStudy}
+            />
           ))}
-        </motion.div>
+        </div>
       </div>
+      </motion.div>
     </section>
   );
 }

@@ -7,7 +7,6 @@ import {
   useVelocity,
   useReducedMotion,
 } from 'framer-motion';
-import Navbar from './Modules/Navbar';
 import Heropage from './Modules/Heropage';
 import Aboutpage from './Modules/Aboutpage';
 import Experiencepage from './Modules/Experiencepage';
