@@ -205,7 +205,7 @@ export default function CaseStudyPage({ project, onClose }) {
   }, []);
 
   return (
-    <div className="relative min-h-screen w-full bg-[#030014] text-slate-100 font-sans overflow-x-hidden">
+    <div className="relative min-h-screen w-full bg-[#050505] text-slate-100 font-sans overflow-x-hidden">
       
       {/* Ambient backgrounds */}
       <div className="fixed inset-0 pointer-events-none z-0">

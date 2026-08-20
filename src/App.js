@@ -115,8 +115,8 @@ function WarpTunnel({ scrollYProgress, reduced }) {
           const trail = s.len * (0.4 + v * 1.6);
           const x2 = cx + Math.cos(s.angle) * Math.max(0, r - trail);
           const y2 = cy + Math.sin(s.angle) * Math.max(0, r - trail);
-          ctx.strokeStyle = `rgba(255,255,255,${0.08 + v * 0.75 * s.dist})`;
-          ctx.lineWidth = 1 + v * 2.4;
+          ctx.strokeStyle = `rgba(70,75,85,${0.03 + v * 0.18 * s.dist})`;
+          ctx.lineWidth = 1 + v * 1.8;
           ctx.beginPath();
           ctx.moveTo(x, y);
           ctx.lineTo(x2, y2);
@@ -136,7 +136,7 @@ function WarpTunnel({ scrollYProgress, reduced }) {
   return (
     <canvas
       ref={canvasRef}
-      style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 40, mixBlendMode: 'screen' }}
+      style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1, mixBlendMode: 'normal' }}
     />
   );
 }

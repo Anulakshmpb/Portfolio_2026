@@ -1,6 +1,6 @@
 import React, { useCallback, useRef } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
-import { TrendingUp, ArrowUpRight, ArrowLeft, ArrowRight } from "lucide-react";
+import { TrendingUp, ArrowUpRight } from "lucide-react";
 import { gsap } from "gsap";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -86,6 +86,17 @@ const PROJECTS_DATA = [
     technologies: ["React", "Node.js", "Express.js", "MongoDB", "JWT", "Socket.io", "Razorpay", "Joi", "Nodemailer"],
     dashboardType: "luxury",
   },
+];
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Fan-out origin per card — where each card "flies in" from before settling
+   into its grid slot. Alternating left/right + rotation gives a dealt-card feel.
+───────────────────────────────────────────────────────────────────────────── */
+const FAN_ORIGINS = [
+  { x: -220, y: 60, rotate: -14 },
+  { x: 220, y: 60, rotate: 14 },
+  { x: -220, y: -40, rotate: 12 },
+  { x: 220, y: -40, rotate: -12 },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -199,10 +210,12 @@ function MiniDashboardPreview({ type }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   Project card with interactive mouse tilt
+   Project card — fans in from an offset/rotated origin into its grid slot
+   when scrolled into view, then keeps the interactive mouse tilt on hover.
 ───────────────────────────────────────────────────────────────────────────── */
 function ProjectCard({ proj, index, onOpenCaseStudy }) {
   const cardRef = useRef(null);
+  const origin = FAN_ORIGINS[index % FAN_ORIGINS.length];
 
   const handleCardMouseMove = (e) => {
     if (!cardRef.current) return;
@@ -231,11 +244,11 @@ function ProjectCard({ proj, index, onOpenCaseStudy }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.6, delay: index * 0.12, ease: EASE }}
-      className="flex-shrink-0 group cursor-pointer"
+      initial={{ opacity: 0, x: origin.x, y: origin.y, rotate: origin.rotate, scale: 0.86 }}
+      whileInView={{ opacity: 1, x: 0, y: 0, rotate: 0, scale: 1 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.85, delay: index * 0.14, ease: EASE }}
+      className="group cursor-pointer"
       style={{
         width: "min(82vw, 380px)",
         perspective: "1000px",
@@ -327,8 +340,6 @@ function ProjectCard({ proj, index, onOpenCaseStudy }) {
    Main Projectspage export
 ───────────────────────────────────────────────────────────────────────────── */
 export default function Projectspage({ onOpenCaseStudy }) {
-  const sliderRef = useRef(null);
-
   const rawX = useMotionValue(0);
   const rawY = useMotionValue(0);
   const rawDotX = useMotionValue(0);
@@ -357,12 +368,6 @@ export default function Projectspage({ onOpenCaseStudy }) {
     rawDotY.set(0);
   }, [rawX, rawY, rawDotX, rawDotY]);
 
-  const scrollSlider = (direction) => {
-    if (!sliderRef.current) return;
-    const scrollAmount = direction === "left" ? -360 : 360;
-    sliderRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
-  };
-
   return (
     <section
       id="projects"
@@ -371,7 +376,7 @@ export default function Projectspage({ onOpenCaseStudy }) {
       style={{
         position: "relative",
         width: "100%",
-        height: "100vh",
+        minHeight: "100vh",
         background: "transparent",
         overflow: "hidden",
         display: "flex",
@@ -379,6 +384,7 @@ export default function Projectspage({ onOpenCaseStudy }) {
         justifyContent: "center",
         perspective: "1100px",
         perspectiveOrigin: "50% 50%",
+        padding: "60px 0",
       }}
     >
       <style>{`
@@ -421,9 +427,10 @@ export default function Projectspage({ onOpenCaseStudy }) {
             }}
           />
         ))}
+      </motion.div>
 
-      {/* Section Header with navigation arrows */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 flex flex-row items-end justify-between" style={{ marginBottom: 20 }}>
+      {/* Section Header */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12" style={{ marginBottom: 20 }}>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -439,35 +446,12 @@ export default function Projectspage({ onOpenCaseStudy }) {
           </h2>
           <div style={{ height: 1, width: 80, background: "rgba(240,237,232,0.15)", marginTop: 12 }} />
         </motion.div>
-
-        {/* Carousel arrows */}
-        <div className="flex gap-3">
-          <button
-            onClick={() => scrollSlider("left")}
-            className="p-2.5 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all flex items-center justify-center cursor-pointer"
-            aria-label="Previous project"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => scrollSlider("right")}
-            className="p-2.5 rounded-full border border-white/10 bg-white/5 text-slate-400 hover:text-white hover:border-white/30 hover:bg-white/10 transition-all flex items-center justify-center cursor-pointer"
-            aria-label="Next project"
-          >
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
-      {/* Horizontal smooth slider */}
+      {/* Wrapping grid — cards fan into place, no horizontal scroll */}
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12">
         <div
-          ref={sliderRef}
-          className="flex gap-6 overflow-x-auto py-4 scroll-smooth relative z-10"
-          style={{
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          }}
+          className="flex flex-wrap justify-center gap-6 py-4"
         >
           {PROJECTS_DATA.map((proj, idx) => (
             <ProjectCard
@@ -479,7 +463,6 @@ export default function Projectspage({ onOpenCaseStudy }) {
           ))}
         </div>
       </div>
-      </motion.div>
     </section>
   );
 }
